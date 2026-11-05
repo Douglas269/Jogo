@@ -4,12 +4,15 @@ extends Node2D
 const Terrain := preload("res://scripts/terrain.gd")
 const Bike := preload("res://scripts/bike.gd")
 
-const TRACK_END := 3200.0
+const TRACK_END := 4200.0
 
 var bike: Bike
 var camera: Camera2D
 var gas_pressed := false
 var brake_pressed := false
+var tilt_up_pressed := false
+var tilt_down_pressed := false
+var info_label: Label
 
 
 func _ready() -> void:
@@ -29,8 +32,15 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	var gas := gas_pressed or Input.is_action_pressed("ui_right")
 	var brake := brake_pressed or Input.is_action_pressed("ui_left")
-	bike.update_motion(delta, gas, brake)
+	var tilt := 0.0
+	if tilt_up_pressed or Input.is_action_pressed("ui_up"):
+		tilt -= 1.0
+	if tilt_down_pressed or Input.is_action_pressed("ui_down"):
+		tilt += 1.0
+	bike.update_motion(delta, gas, brake, tilt)
 	camera.global_position = bike.global_position
+	var status := "Bateu!  Voltando ao início..." if bike.state == Bike.State.CRASHED else ""
+	info_label.text = "Saltos: %d    Batidas: %d    %s" % [bike.jumps, bike.crashes, status]
 
 
 func _build_background() -> void:
@@ -75,9 +85,23 @@ func _build_controls() -> void:
 	var gas := _make_button(ui, "GÁS", Color("2fbf5b"))
 	gas.button_down.connect(func(): gas_pressed = true)
 	gas.button_up.connect(func(): gas_pressed = false)
+	var up := _make_button(ui, "↺", Color("3b82c4"))
+	up.button_down.connect(func(): tilt_up_pressed = true)
+	up.button_up.connect(func(): tilt_up_pressed = false)
+	var down := _make_button(ui, "↻", Color("3b82c4"))
+	down.button_down.connect(func(): tilt_down_pressed = true)
+	down.button_up.connect(func(): tilt_down_pressed = false)
+	info_label = Label.new()
+	info_label.position = Vector2(16, 12)
+	info_label.add_theme_font_size_override("font_size", 22)
+	info_label.add_theme_color_override("font_color", Color.WHITE)
+	info_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	info_label.add_theme_constant_override("outline_size", 6)
+	ui.add_child(info_label)
 	# posiciona os botões no canto de baixo, já que a tela pode mudar de tamanho
-	get_viewport().size_changed.connect(_layout_buttons.bind(brake, gas))
-	_layout_buttons(brake, gas)
+	var all := [brake, gas, up, down]
+	get_viewport().size_changed.connect(_layout_buttons.bind(all))
+	_layout_buttons(all)
 
 
 func _make_button(parent: CanvasLayer, text: String, color: Color) -> Button:
@@ -94,8 +118,16 @@ func _make_button(parent: CanvasLayer, text: String, color: Color) -> Button:
 	return b
 
 
-func _layout_buttons(brake: Button, gas: Button) -> void:
+func _layout_buttons(all: Array) -> void:
 	var s := get_viewport_rect().size
+	var brake: Button = all[0]
+	var gas: Button = all[1]
+	var up: Button = all[2]
+	var down: Button = all[3]
 	brake.position = Vector2(20, s.y - 130)
+	up.position = Vector2(210, s.y - 120)
+	up.custom_minimum_size = Vector2(90, 90)
+	down.position = Vector2(310, s.y - 120)
+	down.custom_minimum_size = Vector2(90, 90)
 	gas.position = Vector2(s.x - 210, s.y - 150)
 	gas.custom_minimum_size = Vector2(190, 130)
