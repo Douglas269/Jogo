@@ -4,6 +4,7 @@ extends Node2D
 const Terrain := preload("res://scripts/terrain.gd")
 const Bike := preload("res://scripts/bike.gd")
 const Levels := preload("res://scripts/levels.gd")
+const TerrainView := preload("res://scripts/terrain_view.gd")
 
 var bike: Bike
 var camera: Camera2D
@@ -29,7 +30,8 @@ func _ready() -> void:
 	camera = Camera2D.new()
 	camera.position_smoothing_enabled = true
 	camera.position_smoothing_speed = 6.0
-	camera.offset = Vector2(-220, -120)
+	camera.zoom = Vector2(0.5, 0.5)
+	camera.offset = Vector2(380, -20)   # moto à esquerda e mais embaixo, para ver a rampa que vem pela frente
 	add_child(camera)
 	_build_controls()
 	_build_overlay()
@@ -82,7 +84,7 @@ func _check_finish() -> void:
 		finished = true
 		var stars := Levels.stars(bike.crashes, bike.score, int(level.target))
 		var last := level_index >= Levels.count() - 1
-		overlay_label.text = "Fase concluída!\n%s\n\n%s\nTempo: %.1f s    Pontos: %d    Batidas: %d" % [str(level.name), "★".repeat(stars) + "☆".repeat(3 - stars), elapsed, bike.score, bike.crashes]
+		overlay_label.text = "Fase concluída!\n%s\n\n%s\nTempo: %.1f s    Pontos: %d    Batidas: %d" % [str(level.name), "Estrelas: %d de 3" % stars, elapsed, bike.score, bike.crashes]
 		overlay_button.text = "Jogar a primeira fase de novo" if last else "Próxima fase"
 		overlay.visible = true
 
@@ -117,26 +119,11 @@ func _build_background() -> void:
 
 
 func _build_track() -> void:
-	var end_x := float(level.length) + 600.0
-	var pts := PackedVector2Array()
-	var x := -200.0
-	while x <= end_x:
-		pts.append(Vector2(x, Terrain.ground_y(x)))
-		x += 4.0
-	var fill := PackedVector2Array(pts)
-	fill.append(Vector2(end_x, 1400))
-	fill.append(Vector2(-200, 1400))
-	var dirt := Polygon2D.new()
-	dirt.polygon = fill
-	dirt.color = Color("c98d4a")
-	add_child(dirt)
-	_track_nodes.append(dirt)
-	var grass := Line2D.new()
-	grass.points = pts
-	grass.width = 10.0
-	grass.default_color = Color("6b8f3a")
-	add_child(grass)
-	_track_nodes.append(grass)
+	var view := TerrainView.new()
+	view.from_x = -400.0
+	view.to_x = float(level.length) + 800.0
+	add_child(view)
+	_track_nodes.append(view)
 	# linha de chegada: poste e bandeira quadriculada
 	var fx := float(level.length)
 	var pole := Line2D.new()
@@ -162,10 +149,10 @@ func _build_controls() -> void:
 	var gas := _make_button(ui, "GÁS", Color("2fbf5b"))
 	gas.button_down.connect(func(): gas_pressed = true)
 	gas.button_up.connect(func(): gas_pressed = false)
-	var up := _make_button(ui, "↺", Color("3b82c4"))
+	var up := _make_button(ui, "EMPINAR", Color("3b82c4"))
 	up.button_down.connect(func(): tilt_up_pressed = true)
 	up.button_up.connect(func(): tilt_up_pressed = false)
-	var down := _make_button(ui, "↻", Color("3b82c4"))
+	var down := _make_button(ui, "INCLINAR", Color("3b82c4"))
 	down.button_down.connect(func(): tilt_down_pressed = true)
 	down.button_up.connect(func(): tilt_down_pressed = false)
 	info_label = Label.new()
@@ -226,8 +213,10 @@ func _layout_buttons(all: Array) -> void:
 	var down: Button = all[3]
 	brake.position = Vector2(20, s.y - 130)
 	up.position = Vector2(210, s.y - 120)
-	up.custom_minimum_size = Vector2(90, 90)
-	down.position = Vector2(310, s.y - 120)
-	down.custom_minimum_size = Vector2(90, 90)
+	up.custom_minimum_size = Vector2(130, 90)
+	up.add_theme_font_size_override("font_size", 18)
+	down.position = Vector2(350, s.y - 120)
+	down.custom_minimum_size = Vector2(130, 90)
+	down.add_theme_font_size_override("font_size", 18)
 	gas.position = Vector2(s.x - 210, s.y - 150)
 	gas.custom_minimum_size = Vector2(190, 130)
