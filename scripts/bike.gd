@@ -52,7 +52,7 @@ func _build() -> void:
 		return
 	var body := Sprite2D.new()
 	body.texture = load("res://assets/moto_amarela.png")
-	body.scale = Vector2.ONE * (430.0 / 451.0)
+	body.scale = Vector2.ONE * (430.0 / float(body.texture.get_width()))   # a moto desenhada tem 430 px de largura no jogo
 	body.position = Vector2(6.7, 0)
 	add_child(body)
 	var wheel_tex: Texture2D = load("res://assets/roda_amarela.png")
