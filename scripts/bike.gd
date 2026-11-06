@@ -14,7 +14,7 @@ const BRAKE := 420.0
 const REVERSE_MAX := -120.0
 const COAST := 90.0
 const GRAVITY := 800.0
-const ROT_SPEED := 3.0         # giro no ar, em rad/s
+const ROT_SPEED := 5.5         # giro no ar, em rad/s
 const LAND_TOLERANCE := 0.9    # diferença máxima (rad) entre a moto e o chão para aterrissar sem bater
 const AIR_GRACE := 0.12        # logo depois de decolar, ignora o chão (a roda traseira ainda está na rampa)
 const CRASH_TIME := 1.0
@@ -27,6 +27,10 @@ var distance := START_X        # x do eixo traseiro quando está no chão
 var speed := 0.0
 var wheel_angle := 0.0
 var crashes := 0
+var score := 0
+var flips := 0
+var air_rot := 0.0              # giro total no voo atual (rad); 2π = uma volta completa
+var checkpoint_x := START_X
 var jumps := 0
 var flights: Array = []         # registro de cada voo (para teste e ajuste)
 var _rear: Sprite2D
@@ -64,6 +68,26 @@ func _make_wheel(tex: Texture2D, s: float) -> Sprite2D:
 	w.scale = Vector2.ONE * s
 	add_child(w)
 	return w
+
+
+## Começa a fase do zero.
+func reset(start_x: float) -> void:
+	_build()
+	state = State.GROUND
+	distance = start_x
+	checkpoint_x = start_x
+	speed = 0.0
+	crashes = 0
+	score = 0
+	flips = 0
+	jumps = 0
+	flights = []
+	air_rot = 0.0
+	_place_ground()
+
+
+func air_angle() -> float:
+	return _ang
 
 
 ## Um passo de tempo. gas = acelerar, brake = frear (ou dar ré), tilt = giro no ar (-1 empina, +1 inclina para a frente).
@@ -118,6 +142,7 @@ func _takeoff(vel: Vector2, from_pos: Vector2, from_rot: float) -> void:
 	_ang = from_rot
 	_mid = from_pos + Vector2(0, WHEEL_Y).rotated(_ang)
 	_air_time = 0.0
+	air_rot = 0.0
 	flights.append({"x0": snappedf(distance, 1.0), "ang0": snappedf(_ang, 0.01), "vy": snappedf(vel.y, 1.0)})
 
 
@@ -126,6 +151,7 @@ func _update_air(delta: float, tilt: float) -> void:
 	_vel.y += GRAVITY * delta
 	_mid += _vel * delta
 	_ang += tilt * ROT_SPEED * delta
+	air_rot += tilt * ROT_SPEED * delta
 	wheel_angle += _vel.x * delta / WHEEL_R * 0.3   # a roda gira mais devagar no ar
 	_place_air()
 	if _air_time < AIR_GRACE:
@@ -154,18 +180,24 @@ func _land(rear: Vector2, front: Vector2) -> void:
 		_crash_timer = CRASH_TIME
 		crashes += 1
 		speed = 0.0
+		air_rot = 0.0
 		landed.emit(false)
 		return
 	state = State.GROUND
 	distance = rear.x
 	speed = maxf(0.0, _vel.dot(Vector2.from_angle(slope)))
 	_place_ground()
+	if _air_time > 0.5:
+		var n := int(round(absf(air_rot) / TAU)) if absf(air_rot) > TAU * 0.8 else 0
+		flips += n
+		score += n * 500 + int(_air_time * 100.0)
+	air_rot = 0.0
 	landed.emit(true)
 
 
 func _respawn() -> void:
 	state = State.GROUND
-	distance = START_X
+	distance = checkpoint_x
 	speed = 0.0
 	_place_ground()
 

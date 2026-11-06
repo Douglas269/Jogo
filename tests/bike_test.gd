@@ -2,6 +2,7 @@ extends SceneTree
 ## Testes: a moto anda e fica no chão; salta nas rampas; aterrissa bem sem girar e bate se girar demais.
 const Bike := preload("res://scripts/bike.gd")
 const Terrain := preload("res://scripts/terrain.gd")
+const Levels := preload("res://scripts/levels.gd")
 
 var ok := true
 
@@ -26,7 +27,7 @@ func _fly(tilt_air: float) -> Dictionary:
 			max_air = maxf(max_air, air)
 		else:
 			air = 0.0
-		if bike.jumps >= 1 and bike.state != Bike.State.AIR and (bike.crashes > 0 or bike.distance > 1500.0):
+		if bike.jumps >= 1 and bike.state != Bike.State.AIR and (bike.crashes > 0 or bike.distance > 1800.0):
 			break
 	print("   voos: ", bike.flights)
 	var r := {"jumps": bike.jumps, "crashes": bike.crashes, "max_air": max_air, "state": bike.state, "x": bike.distance}
@@ -35,6 +36,7 @@ func _fly(tilt_air: float) -> Dictionary:
 
 
 func _initialize() -> void:
+	Terrain.set_ramps(Levels.DATA[0].ramps)
 	print("1) no chão, as rodas tocam o pista antes da primeira rampa")
 	var bike := Bike.new()
 	root.add_child(bike)
